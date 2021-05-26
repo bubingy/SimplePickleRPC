@@ -54,10 +54,13 @@ class BaseStreamHandler:
             if not buffer: break
             data += buffer
             body_size -= buffer_size
-        return data
+        return pickle.loads(data)
 
     @classmethod
     def handle_stream(self) -> None:
+        '''To override.
+
+        '''
         pass
 
 
@@ -100,9 +103,8 @@ class ServerHandler(BaseStreamHandler):
                       conn: socket.socket,
                       registered_functions: dict,
                       registered_instances: dict) -> None:
-        retrieved_data = self.receive(conn)
+        rpc_request = self.receive(conn)
 
-        rpc_request = pickle.loads(retrieved_data)
         function_name = rpc_request['function_name']
         function_args = rpc_request['function_args']
         function_kwargs = rpc_request['function_kwargs']
