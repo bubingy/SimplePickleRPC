@@ -1,3 +1,14 @@
+import os
+import sys
+
+sys.path.append(
+    os.path.dirname(
+        os.path.dirname(
+            __file__
+        )
+    )
+)
+
 from NaiveRPC import *
 
 
@@ -7,11 +18,13 @@ class Test:
         self.y = y
 
     def print_attr(self, message):
-        print(f'{message}: {self.x}, {self.y}')
+        time.sleep(5)
+        return f'{message}: {self.x}, {self.y}'
 
 
 def print_hello(name: str):
-    print(f'hello {name}!')
+    time.sleep(5)
+    return f'hello {name}!'
 
 
 server = RPCServer('localhost', 8088)

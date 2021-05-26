@@ -1,2 +1,2 @@
 # TCPickleRPC
-A naive TCP-pickle-based RPC library. For python only.
+A naive TCP-based RPC library. For python only.

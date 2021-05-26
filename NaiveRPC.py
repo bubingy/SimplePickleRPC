@@ -1,5 +1,5 @@
 import sys
-import json
+import time
 import pickle
 import socket
 from typing import Any, Callable
@@ -21,22 +21,23 @@ It contains following keys:
 * function_args - args for function
 * function_kwargs - kwargs for function
 '''
-class BaseClientHandler:
-    '''Default stream handler for client.
-
-    '''
+class BaseStreamHandler:
     def __init__(self) -> None:
         pass
 
-    # TODO
-
-
-class BaseServerHandler:
-    '''Default stream handler for server.
-    
-    '''
-    def __init__(self) -> None:
-        pass
+    @classmethod
+    def send(self, conn: socket.socket, data: Any) -> None:
+        '''Send data to socket connection.
+        
+        :param conn: a socket session.
+        :param return_value: content to send.
+        '''
+        message = b''
+        body = pickle.dumps(data)
+        body_size = len(body)
+        message += body_size.to_bytes(8, 'big')
+        message += body
+        conn.sendall(message)
 
     @classmethod
     def receive(self, conn: socket.socket) -> bytes:
@@ -56,27 +57,52 @@ class BaseServerHandler:
         return data
 
     @classmethod
-    def response(self, conn: socket.socket, return_value: Any) -> None:
-        '''Send data to socket connection.
-        
-        :param conn: a socket session.
-        :param return_value: content to send.
-        '''
-        message = b''
-        body = pickle.dumps(return_value)
-        body_size = len(body)
-        message += body_size.to_bytes(8, 'big')
-        message += body
-        conn.sendall(message)
+    def handle_stream(self) -> None:
+        pass
+
+
+class ClientHandler(BaseStreamHandler):
+    '''Default stream handler for client.
+
+    '''
+    def __init__(self) -> None:
+        super().__init__()
+
+    @classmethod
+    def handle_stream(self,
+                      conn: socket.socket,
+                      function_name: str,
+                      function_args: tuple=None,
+                      function_kwargs: dict=None) -> Any:
+        rpc_request = {
+            'function_name': function_name,
+            'function_args': function_args,
+            'function_kwargs': function_kwargs
+        }
+        self.send(conn, rpc_request)
+        while True:
+            try:
+                data = pickle.loads(self.receive(conn))
+                return data
+            except Exception:
+                time.sleep(1)
+
+
+class ServerHandler(BaseStreamHandler):
+    '''Default stream handler for server.
+    
+    '''
+    def __init__(self) -> None:
+        super().__init__()
 
     @classmethod
     def handle_stream(self,
                       conn: socket.socket,
                       registered_functions: dict,
-                      registered_instances: dict) -> bytes:
+                      registered_instances: dict) -> None:
         retrieved_data = self.receive(conn)
-        # TODO: serialize solution to be determined
-        rpc_request = json.loads(retrieved_data)
+
+        rpc_request = pickle.loads(retrieved_data)
         function_name = rpc_request['function_name']
         function_args = rpc_request['function_args']
         function_kwargs = rpc_request['function_kwargs']
@@ -107,7 +133,7 @@ class BaseServerHandler:
             )
 
         if returned_value is None: return
-        self.response(conn, returned_value)
+        self.send(conn, returned_value)
 
 
 ##############################
@@ -124,7 +150,7 @@ class RPCServer:
             socket.SOCK_STREAM
         )
         self.__s.bind((host, port))
-        self.__stream_handler = BaseServerHandler()
+        self.__stream_handler = ServerHandler()
         self.__functions = dict()
         self.__instances = dict()
 
@@ -169,6 +195,30 @@ class RPCServer:
                 self.__instances
             )
 
+
+##############################
+#           Client           #
+##############################
+class RPCClient:
+    def __init__(self, host: str, port: int) -> None:
+        assert isinstance(port, int) and port > 0
+        self.__s = socket.socket(
+            socket.AF_INET,
+            socket.SOCK_STREAM
+        )
+        self.__s.connect((host, port))
+        self.__stream_handler = ClientHandler()
+
+    def call(self,
+             function_name: str,
+             function_args: tuple=None,
+             function_kwargs: dict=None) -> Any:
+        return self.__stream_handler.handle_stream(
+            self.__s,
+            function_name,
+            function_args,
+            function_kwargs
+        )
 
 ##############################
 #           Utils            #
