@@ -213,8 +213,8 @@ class RPCClient:
 
     def call(self,
              function_name: str,
-             function_args: tuple=None,
-             function_kwargs: dict=None) -> Any:
+             function_args: tuple=tuple(),
+             function_kwargs: dict=dict()) -> Any:
         return self.__stream_handler.handle_stream(
             self.__s,
             function_name,

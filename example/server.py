@@ -9,7 +9,7 @@ sys.path.append(
     )
 )
 
-from NaiveRPC import *
+from SimpleRPC import *
 
 
 class Test:
@@ -18,16 +18,14 @@ class Test:
         self.y = y
 
     def print_attr(self, message):
-        time.sleep(5)
         return f'{message}: {self.x}, {self.y}'
 
 
 def print_hello(name: str):
-    time.sleep(5)
     return f'hello {name}!'
 
 
-server = RPCServer('localhost', 8088)
+server = RPCServer('127.0.0.1', 8088)
 server.register_function(print_hello)
 test_obj = Test(4, 6)
 server.register_instance(test_obj)

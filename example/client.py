@@ -9,16 +9,16 @@ sys.path.append(
     )
 )
 
-from NaiveRPC import RPCClient
+from SimpleRPC import RPCClient
 
 
-HOST = 'localhost'
+HOST = '127.0.0.1'
 PORT = 8088
 
 client = RPCClient(HOST, PORT)
 
-data = client.call('test_obj.print_attr', ('vincent',), dict())
+data = client.call('test_obj.print_attr', ('vincent',))
 print(f'result of test_obj.print_attr: {data}')
 
-data = client.call('print_hello', ('vincent',), dict())
+data = client.call('print_hello', ('vincent',))
 print(f'result of print_hello: {data}')
