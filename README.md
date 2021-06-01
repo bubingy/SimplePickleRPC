@@ -1,5 +1,5 @@
-# TCPickleRPC
-A naive TCP-based RPC library. For python only.
+# SimplePyRPC
+A simple TCP-based RPC library. For python only.
 
 ## Install
 Put `SimpleRPC.py` into your project directory.
