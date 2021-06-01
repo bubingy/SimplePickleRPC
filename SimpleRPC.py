@@ -54,7 +54,7 @@ class BaseStreamHandler:
             if not buffer: break
             data += buffer
             body_size -= buffer_size
-        return pickle.loads(data)
+        return data
 
     @classmethod
     def handle_stream(self) -> None:
@@ -75,20 +75,20 @@ class ClientHandler(BaseStreamHandler):
     def handle_stream(self,
                       conn: socket.socket,
                       function_name: str,
-                      function_args: tuple=None,
-                      function_kwargs: dict=None) -> Any:
+                      function_args: tuple=tuple(),
+                      function_kwargs: dict=dict()) -> Any:
         rpc_request = {
             'function_name': function_name,
             'function_args': function_args,
             'function_kwargs': function_kwargs
         }
         self.send(conn, rpc_request)
-        while True:
-            try:
-                data = pickle.loads(self.receive(conn))
-                return data
-            except Exception:
-                time.sleep(1)
+        try:
+            data = pickle.loads(self.receive(conn))
+            return data
+        except Exception as e:
+            print(e)
+            return None
 
 
 class ServerHandler(BaseStreamHandler):
@@ -103,7 +103,7 @@ class ServerHandler(BaseStreamHandler):
                       conn: socket.socket,
                       registered_functions: dict,
                       registered_instances: dict) -> None:
-        rpc_request = self.receive(conn)
+        rpc_request = pickle.loads(self.receive(conn))
 
         function_name = rpc_request['function_name']
         function_args = rpc_request['function_args']
@@ -191,11 +191,16 @@ class RPCServer:
         while True:
             self.__conn, _ = self.__s.accept()
 
-            self.__stream_handler.handle_stream(
-                self.__conn,
-                self.__functions,
-                self.__instances
-            )
+            while True:
+                try:
+                    self.__stream_handler.handle_stream(
+                        self.__conn,
+                        self.__functions,
+                        self.__instances
+                    )
+                except Exception as e:
+                    print(f'{e}, disconnect with client..')
+                    break
 
 
 ##############################

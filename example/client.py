@@ -12,8 +12,8 @@ sys.path.append(
 from SimpleRPC import RPCClient
 
 
-HOST = '127.0.0.1'
-PORT = 8088
+HOST = '10.20.10.158'
+PORT = 9999
 
 client = RPCClient(HOST, PORT)
 

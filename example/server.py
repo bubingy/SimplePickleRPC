@@ -25,7 +25,7 @@ def print_hello(name: str):
     return f'hello {name}!'
 
 
-server = RPCServer('127.0.0.1', 8088)
+server = RPCServer('0.0.0.0', 9999)
 server.register_function(print_hello)
 test_obj = Test(4, 6)
 server.register_instance(test_obj)
