@@ -27,20 +27,17 @@ class BaseStreamHandler:
 
     '''
     def __init__(self) -> None:
-        self.__registered_functions = dict()
-        self.__registered_instances = dict()
+        self._registered_functions = dict()
+        self._registered_instances = dict()
     
-    def register_function(self, fun: Callable) -> None:
+    def register_function(self, fun) -> None:
         '''Register a function for calling.
 
         :param fun: a callable object.
         '''
-        @wraps(fun)
-        def decorated():
-            if fun.__name__ in self.__registered_functions.keys():
-                raise 'function already registered.'
-            self.__registered_functions[fun.__name__] = fun.__module__
-        return decorated
+        if fun.__name__ in self._registered_functions.keys():
+            raise 'function already registered.'
+        self._registered_functions[fun.__name__] = fun.__module__
     
     def register_instance(self, instance: object) -> None:
         '''Register a class instance for calling.
@@ -48,9 +45,9 @@ class BaseStreamHandler:
         :param instance: a class instance.
         '''
         instance_name = get_object_name(instance.__module__, instance)
-        if instance_name in self.__registered_instances.keys():
+        if instance_name in self._registered_instances.keys():
             raise 'instance already registered.'
-        self.__registered_instances[instance_name] = instance.__module__
+        self._registered_instances[instance_name] = instance.__module__
 
     @classmethod
     async def receive(self, reader: StreamReader) -> bytes:
@@ -82,6 +79,36 @@ class BaseStreamHandler:
         message += body
         writer.write(message)
 
+    def call(self,
+             function_name: str,
+             function_args: tuple=tuple(),
+             function_kwargs: dict=dict()) -> Any:
+        if '.' in function_name:
+            function_call_path = function_name.split('.')
+            if len(function_call_path) != 2: return
+
+            instance_name = function_call_path[0]
+            function_name = function_call_path[1]
+            instance_module = sys.modules[self._registered_instances[instance_name]]
+            method_to_call = getattr(
+                instance_module.__getattribute__(instance_name),
+                function_name
+            )
+            returned_value = method_to_call(
+                *function_args,
+                **function_kwargs
+            )
+        else:
+            method_to_call = getattr(
+                sys.modules[self._registered_functions[function_name]], 
+                function_name
+            )
+            returned_value = method_to_call(
+                *function_args,
+                **function_kwargs
+            )
+        return returned_value
+
 
 class BaseServerStreamHandler(BaseStreamHandler):
     '''BaseServerStreamHandler class
@@ -91,6 +118,9 @@ class BaseServerStreamHandler(BaseStreamHandler):
                             reader: StreamReader,
                             writer: StreamWriter) -> Any
     '''
+    def __init__(self) -> None:
+        super().__init__()
+
     async def client_connected_cb(self,
                                   reader: StreamReader,
                                   writer: StreamWriter) -> Any:
@@ -176,9 +206,22 @@ class RPCClient:
         '''
         self.handler = handler
 
-    def start_communicate(self):
-        asyncio.run(self.handler.connect_to_server())
-        asyncio.run(self.handler.communicate_with_server())
+    def start_communicate(self, host: str, port: int, **kwargs):
+        loop = kwargs.get('loop')
+        if loop is not None: 
+            self.event_loop = loop
+            asyncio.set_event_loop()
+        else:
+            self.event_loop = asyncio.get_event_loop()
+
+        self.event_loop.run_until_complete(
+            self.handler.connect_to_server(host, port)
+        )
+        self.event_loop.run_until_complete(
+            self.handler.communicate_with_server()
+        )
+        self.event_loop.run_forever()
+
 
 
 ##############################

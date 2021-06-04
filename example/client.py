@@ -9,16 +9,24 @@ sys.path.append(
     )
 )
 
-from SimpleRPC import RPCClient
+from SimpleRPC import *
 
 
-HOST = '10.20.10.158'
-PORT = 9999
+class MyClientStreamHandler(BaseClientStreamHandler):
+    async def communicate_with_server(self) -> None:
+        message = {
+            'function_name': 'print_hello',
+            'function_args': ('vincent',),
+            'function_kwargs': dict()
+        }
+        for _ in range(10):
+            await asyncio.sleep(2)
+            self.send(self.writer, message)
 
-client = RPCClient(HOST, PORT)
 
-data = client.call('test_obj.print_attr', ('vincent',))
-print(f'result of test_obj.print_attr: {data}')
+host = '10.20.10.78'
+port = 8088
 
-data = client.call('print_hello', ('vincent',))
-print(f'result of print_hello: {data}')
+handler = MyClientStreamHandler()
+client = RPCClient(handler)
+client.start_communicate(host, port)

@@ -11,23 +11,34 @@ sys.path.append(
 
 from SimpleRPC import *
 
+class MyServerStreamHandler(BaseServerStreamHandler):
+    def __init__(self) -> None:
+        super().__init__()
+        
+        self._registered_functions = dict()
+        self._registered_instances = dict()
 
-class Test:
-    def __init__(self, x, y) -> None:
-        self.x = x
-        self.y = y
+    async def client_connected_cb(self,
+                                  reader: StreamReader,
+                                  writer: StreamWriter) -> Any:
+        while True:
+            addr = writer.get_extra_info('peername')
+            message = pickle.loads(await self.receive(reader))
+            function_name = message['function_name']
+            function_args = message['function_args']
+            function_kwargs = message['function_kwargs']
+            if function_name is None: continue
 
-    def print_attr(self, message):
-        return f'{message}: {self.x}, {self.y}'
+            result = self.call(function_name, function_args, function_kwargs)
+            print(result)
 
+
+handler = MyServerStreamHandler()
 
 def print_hello(name: str):
     return f'hello {name}!'
 
 
-server = RPCServer('0.0.0.0', 9999)
-server.register_function(print_hello)
-test_obj = Test(4, 6)
-server.register_instance(test_obj)
-
-server.run_forever()
+server = RPCServer(handler)
+handler.register_function(print_hello)
+server.serve_forever('0.0.0.0', 8088)
