@@ -1,8 +1,7 @@
 import sys
 import pickle
 import asyncio
-from typing import Any, Callable
-from functools import wraps
+from typing import Any
 from asyncio.streams import StreamReader, StreamWriter
 
 
@@ -57,7 +56,11 @@ class BaseStreamHandler:
         :return: retrieved bytes.
         '''
         data = b''
-        body_size = int.from_bytes(await reader.readexactly(8), 'big')
+        try:
+            body_size = int.from_bytes(await reader.readexactly(8), 'big')
+        except Exception as e:
+            print(e)
+            return None
         while body_size > 0:
             buffer_size = min(4096, body_size)
             buffer = await reader.readexactly(buffer_size)
@@ -73,7 +76,11 @@ class BaseStreamHandler:
         :param data: data to send.
         '''
         message = b''
-        body = pickle.dumps(data)
+        try:
+            body = pickle.dumps(data)
+        except Exception as e:
+            print(f'fail to dump message: {e}')
+            return
         body_size = len(body)
         message += body_size.to_bytes(8, 'big')
         message += body
@@ -89,24 +96,31 @@ class BaseStreamHandler:
 
             instance_name = function_call_path[0]
             function_name = function_call_path[1]
-            instance_module = sys.modules[self._registered_instances[instance_name]]
-            method_to_call = getattr(
-                instance_module.__getattribute__(instance_name),
-                function_name
-            )
-            returned_value = method_to_call(
-                *function_args,
-                **function_kwargs
-            )
+            try:
+                instance_module = sys.modules[self._registered_instances[instance_name]]
+                method_to_call = getattr(
+                    instance_module.__getattribute__(instance_name),
+                    function_name
+                )
+                returned_value = method_to_call(
+                    *function_args,
+                    **function_kwargs
+                )
+            except Exception as e:
+                print(f'fail to call {instance_name}.{function_name}: {e}')
+                return
         else:
-            method_to_call = getattr(
-                sys.modules[self._registered_functions[function_name]], 
-                function_name
-            )
-            returned_value = method_to_call(
-                *function_args,
-                **function_kwargs
-            )
+            try:
+                method_to_call = getattr(
+                    sys.modules[self._registered_functions[function_name]], 
+                    function_name
+                )
+                returned_value = method_to_call(
+                    *function_args,
+                    **function_kwargs
+                )
+            except Exception as e:
+                print(f'fail to call {function_name}: {e}')
         return returned_value
 
 
@@ -221,7 +235,6 @@ class RPCClient:
             self.handler.communicate_with_server()
         )
         self.event_loop.run_forever()
-
 
 
 ##############################

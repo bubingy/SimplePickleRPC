@@ -21,16 +21,18 @@ class MyServerStreamHandler(BaseServerStreamHandler):
     async def client_connected_cb(self,
                                   reader: StreamReader,
                                   writer: StreamWriter) -> Any:
-        while True:
-            addr = writer.get_extra_info('peername')
-            message = pickle.loads(await self.receive(reader))
-            function_name = message['function_name']
-            function_args = message['function_args']
-            function_kwargs = message['function_kwargs']
-            if function_name is None: continue
 
-            result = self.call(function_name, function_args, function_kwargs)
-            print(result)
+        addr = writer.get_extra_info('peername')
+        # message = pickle.loads(await self.receive(reader))
+        # function_name = message['function_name']
+        # function_args = message['function_args']
+        # function_kwargs = message['function_kwargs']
+        # if function_name is None: 
+        #     pass
+        #     # TODO: heart beat
+
+        # result = self.call(function_name, function_args, function_kwargs)
+        print(addr)
 
 
 handler = MyServerStreamHandler()
