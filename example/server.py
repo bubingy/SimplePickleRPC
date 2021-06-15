@@ -9,7 +9,7 @@ sys.path.append(
     )
 )
 
-from SimpleRPC import *
+from PickleRPC import *
 
 class MyServerStreamHandler(BaseServerStreamHandler):
     def __init__(self) -> None:
