@@ -21,18 +21,14 @@ class MyServerStreamHandler(BaseServerStreamHandler):
     async def client_connected_cb(self,
                                   reader: StreamReader,
                                   writer: StreamWriter) -> Any:
-
         addr = writer.get_extra_info('peername')
-        # message = pickle.loads(await self.receive(reader))
-        # function_name = message['function_name']
-        # function_args = message['function_args']
-        # function_kwargs = message['function_kwargs']
-        # if function_name is None: 
-        #     pass
-        #     # TODO: heart beat
-
-        # result = self.call(function_name, function_args, function_kwargs)
-        print(addr)
+        message = pickle.loads(await self.receive(reader))
+        function_name = message['function_name']
+        function_args = message['function_args']
+        function_kwargs = message['function_kwargs']
+        result = self.call(function_name, function_args, function_kwargs)
+        print(f'get rpc request from {addr}, get result: {result}')
+        if result is not None: self.send(writer, result)
 
 
 handler = MyServerStreamHandler()

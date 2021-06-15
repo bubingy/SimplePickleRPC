@@ -1,32 +1,54 @@
-import os
-import sys
+import pickle
+import socket
+from typing import Any
 
-sys.path.append(
-    os.path.dirname(
-        os.path.dirname(
-            __file__
-        )
-    )
-)
+class Client:
+    def __init__(self, host, port) -> None:
+        self.host, self.port = host, port
+        self.conn = socket.socket()
+        self.conn.connect((self.host, self.port))
 
-from SimpleRPC import *
+    def send(self, data: Any) -> None:
+        message = b''
+        try:
+            body = pickle.dumps(data)
+        except Exception as e:
+            print(f'fail to dump message: {e}')
+            return
+        body_size = len(body)
+        message += body_size.to_bytes(8, 'big')
+        message += body
+        self.conn.send(message)
 
+    def receive(self) -> bytes:
+        data = b''
+        try:
+            body_size = int.from_bytes(self.conn.recv(8), 'big')
+        except Exception as e:
+            print(e)
+            return None
+        while body_size > 0:
+            buffer_size = min(4096, body_size)
+            buffer = self.conn.recv(buffer_size)
+            data += buffer
+            body_size -= buffer_size
+        return data
 
-class MyClientStreamHandler(BaseClientStreamHandler):
-    async def communicate_with_server(self) -> None:
-        message = {
-            'function_name': 'print_hello',
-            'function_args': ('vincent',),
-            'function_kwargs': dict()
+    def remote_call(self,
+                    function_name: str,
+                    function_args: tuple=tuple(),
+                    function_kwargs: dict=dict()):
+        call_request = {
+            'function_name': function_name,
+            'function_args': function_args,
+            'function_kwargs': function_kwargs
         }
-        for _ in range(10):
-            await asyncio.sleep(2)
-            self.send(self.writer, message)
-
+        self.send(call_request)
+        result = self.receive()
+        print(pickle.loads(result))
 
 host = '10.20.10.78'
 port = 8088
 
-handler = MyClientStreamHandler()
-client = RPCClient(handler)
-client.start_communicate(host, port)
+client = Client(host, port)
+client.remote_call('print_hello', ('Vincent',))
